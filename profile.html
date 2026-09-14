@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Grocery Management System - My Profile</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body data-page="profile">
+    <div class="app-shell">
+      <header class="topbar">
+        <h1>My Profile</h1>
+        <a href="dashboard.html" class="secondary-link">Back to Dashboard</a>
+      </header>
+
+      <main class="content-panel">
+        <form id="profileForm" novalidate>
+          <div class="field-group">
+            <label for="profileFirstName">First Name</label>
+            <input type="text" id="profileFirstName" name="firstname" required disabled />
+          </div>
+
+          <div class="field-group">
+            <label for="profileLastName">Last Name</label>
+            <input type="text" id="profileLastName" name="lastname" required disabled />
+          </div>
+
+          <div class="field-group">
+            <label for="profileEmail">Email ID</label>
+            <input type="email" id="profileEmail" name="emailid" required disabled />
+          </div>
+
+          <div class="field-group">
+            <label for="profilePassword">New Password</label>
+            <input type="password" id="profilePassword" name="password" placeholder="Leave blank to keep current password" disabled />
+          </div>
+
+          <div class="field-group">
+            <label for="profileConfirmPassword">Confirm New Password</label>
+            <input type="password" id="profileConfirmPassword" name="confirmPassword" placeholder="Re-enter new password" disabled />
+          </div>
+
+          <div class="checkbox-group">
+            <label for="profileActive">
+              <input type="checkbox" id="profileActive" name="useractive" disabled />
+              Profile active
+            </label>
+          </div>
+
+          <div class="profile-actions">
+            <button type="button" id="enableEditBtn" class="primary-btn">Update</button>
+            <button type="submit" id="saveProfileBtn" class="primary-btn hidden">Save Changes</button>
+          </div>
+        </form>
+      </main>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>

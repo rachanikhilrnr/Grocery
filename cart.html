@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Grocery Management System - Cart</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.1.1/jspdf.umd.min.js"></script>
+  </head>
+  <body data-page="cart">
+    <div class="app-shell">
+      <header class="topbar">
+        <div>
+          <h1>My Cart</h1>
+        </div>
+        <div class="header-actions">
+          <a href="dashboard.html" class="secondary-link">Continue Shopping</a>
+          <a href="profile.html" class="secondary-link">My Profile</a>
+          <button id="logoutBtn" class="warning-btn">Exit</button>
+        </div>
+      </header>
+
+      <main class="content-panel cart-layout">
+        <div id="cartItems" class="cart-items"></div>
+        <aside id="cartSummary" class="summary-box"></aside>
+      </main>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>
