@@ -155,6 +155,15 @@ a {
   text-align: center;
 }
 
+.login-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.login-actions button {
+  flex: 1;
+}
+
 .switch-link a {
   color: var(--primary);
   font-weight: 600;
@@ -489,6 +498,118 @@ a {
   color: var(--muted);
 }
 
+.admin-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.admin-section-heading,
+.admin-row,
+.admin-row-actions,
+.admin-product-info,
+.admin-product-controls {
+  display: flex;
+  align-items: center;
+}
+
+.admin-section-heading,
+.admin-row {
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.admin-list,
+.admin-inventory {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.admin-row {
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #f9fbff;
+}
+
+.admin-row strong,
+.admin-row span {
+  display: block;
+}
+
+.admin-row span {
+  color: var(--muted);
+  margin-top: 0.25rem;
+}
+
+.admin-row-actions,
+.admin-product-controls {
+  gap: 0.65rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.status-badge {
+  font-weight: 700;
+}
+
+.status-badge.active {
+  color: var(--success);
+}
+
+.status-badge.inactive {
+  color: var(--danger);
+}
+
+.admin-product-info {
+  gap: 0.75rem;
+}
+
+.inventory-admin-row input {
+  width: 90px;
+  padding: 0.55rem;
+}
+
+.admin-product-controls label {
+  font-weight: 600;
+}
+
+.admin-product-controls .primary-btn,
+.admin-product-controls .warning-btn,
+.admin-row-actions .secondary-btn {
+  padding: 0.6rem 0.8rem;
+  font-size: 0.9rem;
+}
+
+.add-product-panel {
+  border-top: 1px solid var(--border);
+  padding-top: 1.5rem;
+}
+
+.admin-product-form {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  align-items: end;
+}
+
+@media (max-width: 640px) {
+  .admin-row,
+  .admin-section-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .admin-row-actions,
+  .admin-product-controls {
+    justify-content: flex-start;
+  }
+
+  .admin-product-form {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 860px) {
   .dashboard-layout,
   .cart-layout {
@@ -514,7 +635,8 @@ a {
 
   .dashboard-actions,
   .dashboard-toolbar,
-  .header-actions {
+  .header-actions,
+  .login-actions {
     flex-direction: column;
     align-items: stretch;
   }

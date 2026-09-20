@@ -1,8 +1,21 @@
 const STORAGE_KEY = 'grocery_users';
 const SESSION_KEY = 'grocery_logged_in_user';
 const CART_KEY = 'grocery_cart';
+const INVENTORY_KEY = 'grocery_inventory';
+const ADMIN_EMAIL = 'admin@gmail.com';
+const ADMIN_PASSWORD = 'grocery@team3?';
+const CATEGORY_ORDER = [
+  'Fruits & Vegetables',
+  'Rice & Staples',
+  'Personal Care',
+  'Household Essentials',
+  'Refrigerated Items',
+  'Bakery',
+  'Beverages',
+  'Chocolates',
+];
 
-const INVENTORY = [
+const DEFAULT_INVENTORY = [
   { id: 'dairy-milk-silk', name: 'Dairy Milk Silk', category: 'Chocolates', quantity: '50 g', price: 120, stock: 25, emoji: '🍫' },
   { id: 'kitkat', name: 'KitKat', category: 'Chocolates', quantity: '36 g', price: 55, stock: 30, emoji: '🍫' },
   { id: 'perk', name: 'Perk', category: 'Chocolates', quantity: '15 g', price: 15, stock: 40, emoji: '🍫' },
@@ -28,6 +41,17 @@ const INVENTORY = [
   { id: 'detergent', name: 'Detergent', category: 'Household Essentials', quantity: '1 kg', price: 180, stock: 12, emoji: '🧺' },
   { id: 'toilet-cleaner', name: 'Toilet Cleaner', category: 'Household Essentials', quantity: '500 ml', price: 140, stock: 10, emoji: '🧽' },
 ];
+
+const loadInventory = () => {
+  const inventory = JSON.parse(localStorage.getItem(INVENTORY_KEY) || 'null');
+  return Array.isArray(inventory) ? inventory : DEFAULT_INVENTORY.map((item) => ({ ...item }));
+};
+
+let INVENTORY = loadInventory();
+
+const saveInventory = () => {
+  localStorage.setItem(INVENTORY_KEY, JSON.stringify(INVENTORY));
+};
 
 const getUsers = () => {
   const users = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
@@ -274,7 +298,9 @@ const renderDashboard = () => {
     </div>
   `;
 
-  const categories = [...new Set(INVENTORY.map((item) => item.category))];
+  const categories = [...new Set(INVENTORY.map((item) => item.category))].sort(
+    (firstCategory, secondCategory) => CATEGORY_ORDER.indexOf(firstCategory) - CATEGORY_ORDER.indexOf(secondCategory)
+  );
 
   inventoryContainer.innerHTML = categories
     .map((category) => {
@@ -354,6 +380,12 @@ const handleLoginSubmit = (event) => {
   const email = normalizeEmail(document.getElementById('loginEmail').value);
   const password = document.getElementById('loginPassword').value;
 
+  if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
+    setCurrentUser({ emailid: ADMIN_EMAIL, firstname: 'Admin', lastname: '', role: 'admin' });
+    window.location.href = 'admin.html';
+    return;
+  }
+
   const users = getUsers();
   const foundUser = users.find((user) => normalizeEmail(user.emailid) === email);
 
@@ -387,6 +419,11 @@ const handleRegisterSubmit = (event) => {
 
   if (!emailid.includes('@')) {
     showAlert('Please enter a valid email ID.');
+    return;
+  }
+
+  if (emailid === ADMIN_EMAIL) {
+    showAlert('This email is reserved for the administrator.');
     return;
   }
 
@@ -893,11 +930,162 @@ const generateInvoicePdf = (invoice) => {
   doc.save(`${invoice.invoiceNo}.pdf`);
 };
 
+const renderAdminPage = () => {
+  const currentUser = getCurrentUser();
+
+  if (!currentUser || currentUser.role !== 'admin') {
+    window.location.href = 'index.html';
+    return;
+  }
+
+  const usersContainer = document.getElementById('adminUsers');
+  const inventoryContainer = document.getElementById('adminInventory');
+  const categorySelect = document.getElementById('productCategory');
+  const logoutButton = document.getElementById('adminLogoutBtn');
+
+  if (!usersContainer || !inventoryContainer || !categorySelect) {
+    return;
+  }
+
+  const renderUsers = () => {
+    const users = getUsers();
+    usersContainer.innerHTML = users.length
+      ? users
+          .map(
+            (user) => `
+              <div class="admin-row">
+                <div>
+                  <strong>${escapeHtml(`${user.firstname} ${user.lastname}`.trim())}</strong>
+                  <span>${escapeHtml(user.emailid)}</span>
+                </div>
+                <div class="admin-row-actions">
+                  <span class="status-badge ${user.useractive === false ? 'inactive' : 'active'}">${user.useractive === false ? 'Inactive' : 'Active'}</span>
+                  <button class="secondary-btn admin-user-toggle" data-email="${escapeHtml(user.emailid)}">${user.useractive === false ? 'Activate' : 'Deactivate'}</button>
+                </div>
+              </div>
+            `
+          )
+          .join('')
+      : '<p class="inactive-message">No registered users yet.</p>';
+
+    document.querySelectorAll('.admin-user-toggle').forEach((button) => {
+      button.addEventListener('click', () => {
+        const users = getUsers();
+        const user = users.find((entry) => normalizeEmail(entry.emailid) === normalizeEmail(button.dataset.email));
+
+        if (user) {
+          user.useractive = user.useractive === false;
+          saveUsers(users);
+          renderUsers();
+        }
+      });
+    });
+  };
+
+  const renderInventory = () => {
+    const categories = [...new Set([...INVENTORY.map((item) => item.category), ...Array.from(categorySelect.options).map((option) => option.value)])].sort(
+      (firstCategory, secondCategory) => CATEGORY_ORDER.indexOf(firstCategory) - CATEGORY_ORDER.indexOf(secondCategory)
+    );
+    categorySelect.innerHTML = categories.map((category) => `<option value="${escapeHtml(category)}">${escapeHtml(category)}</option>`).join('');
+
+    inventoryContainer.innerHTML = categories
+      .map((category) => {
+        const items = INVENTORY.filter((item) => item.category === category);
+
+        return `
+          <section class="category-section">
+            <h3>${escapeHtml(category)}</h3>
+            ${items.length ? items.map((item) => `
+              <div class="admin-row inventory-admin-row">
+                <div class="admin-product-info"><span class="item-emoji">${item.emoji}</span><div><strong>${escapeHtml(item.name)}</strong><span>${escapeHtml(item.quantity)} • ${formatCurrency(item.price)}</span></div></div>
+                <div class="admin-product-controls">
+                  <label>Stock <input type="number" min="0" class="admin-stock-input" data-item-id="${item.id}" value="${item.stock}" /></label>
+                  <button class="primary-btn admin-save-stock" data-item-id="${item.id}">Save</button>
+                  <button class="warning-btn admin-delete-item" data-item-id="${item.id}">Delete</button>
+                </div>
+              </div>
+            `).join('') : '<p class="inactive-message">No products in this section.</p>'}
+          </section>
+        `;
+      })
+      .join('');
+
+    document.querySelectorAll('.admin-save-stock').forEach((button) => {
+      button.addEventListener('click', () => {
+        const item = INVENTORY.find((entry) => entry.id === button.dataset.itemId);
+        const input = document.querySelector(`[data-item-id="${button.dataset.itemId}"].admin-stock-input`);
+
+        if (item && input && Number.isInteger(Number(input.value)) && Number(input.value) >= 0) {
+          item.stock = Number(input.value);
+          saveInventory();
+          showAlert(`${item.name} stock updated.`);
+          renderInventory();
+        }
+      });
+    });
+
+    document.querySelectorAll('.admin-delete-item').forEach((button) => {
+      button.addEventListener('click', () => {
+        const item = INVENTORY.find((entry) => entry.id === button.dataset.itemId);
+        if (item && confirm(`Delete ${item.name}?`)) {
+          INVENTORY = INVENTORY.filter((entry) => entry.id !== item.id);
+          saveInventory();
+          renderInventory();
+        }
+      });
+    });
+  };
+
+  document.getElementById('addProductForm')?.addEventListener('submit', (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+    const name = String(formData.get('name') || '').trim();
+    const category = String(formData.get('category') || '').trim();
+    const quantity = String(formData.get('quantity') || '').trim();
+    const price = Number(formData.get('price'));
+    const stock = Number(formData.get('stock'));
+    const emoji = String(formData.get('emoji') || '🛒').trim() || '🛒';
+
+    if (!name || !category || !quantity || price < 0 || stock < 0 || !Number.isInteger(stock)) {
+      showAlert('Enter valid product details, price, and whole-number stock.');
+      return;
+    }
+
+    INVENTORY.push({ id: `${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${Date.now()}`, name, category, quantity, price, stock, emoji });
+    saveInventory();
+    form.reset();
+    renderInventory();
+    showAlert(`${name} added to inventory.`);
+  });
+
+  logoutButton?.addEventListener('click', () => {
+    clearCurrentUser();
+    window.location.href = 'index.html';
+  });
+
+  renderUsers();
+  renderInventory();
+};
+
 const initializePage = () => {
   const page = document.body.dataset.page;
 
   if (page === 'login') {
     document.getElementById('loginForm')?.addEventListener('submit', handleLoginSubmit);
+    document.getElementById('adminLoginBtn')?.addEventListener('click', () => {
+      const heading = document.getElementById('loginHeading');
+      const emailInput = document.getElementById('loginEmail');
+      const passwordInput = document.getElementById('loginPassword');
+      const adminLoginButton = document.getElementById('adminLoginBtn');
+
+      heading.textContent = 'Admin Login';
+      emailInput.placeholder = 'Enter admin email';
+      passwordInput.placeholder = 'Enter admin password';
+      adminLoginButton.textContent = 'Admin Mode Selected';
+      adminLoginButton.disabled = true;
+      emailInput.focus();
+    });
   }
 
   if (page === 'register') {
@@ -918,6 +1106,10 @@ const initializePage = () => {
 
   if (page === 'cart') {
     renderCartPage();
+  }
+
+  if (page === 'admin') {
+    renderAdminPage();
   }
 };
 
