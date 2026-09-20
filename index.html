@@ -1,16 +1,19 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
+    <!-- Basic document settings and the shared stylesheet. -->
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Grocery Management System - Login</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body data-page="login">
+    <!-- Login screen for registered customers and the administrator. -->
     <div class="auth-container">
       <h1>Grocery Management System</h1>
       <h2 id="loginHeading">Login</h2>
 
+      <!-- JavaScript reads these fields when the user submits the login form. -->
       <form id="loginForm" novalidate>
         <div class="field-group">
           <label for="loginEmail">Email ID</label>
@@ -22,18 +25,21 @@
           <input type="password" id="loginPassword" name="password" placeholder="Enter your password" required />
         </div>
 
+        <!-- The second button switches the login screen into admin-login mode. -->
         <div class="login-actions">
           <button type="submit" class="primary-btn">Login</button>
           <button type="button" id="adminLoginBtn" class="secondary-btn">Admin Login</button>
         </div>
       </form>
 
+      <!-- Link to the new-user registration page. -->
       <p class="switch-link">
         New user?
         <a href="register.html">Register here</a>
       </p>
     </div>
 
+    <!-- The shared script selects behavior using body[data-page]. -->
     <script src="script.js"></script>
   </body>
 </html>

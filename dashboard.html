@@ -1,29 +1,37 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
+    <!-- Dashboard metadata and shared visual styles. -->
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Grocery Management System - Dashboard</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body data-page="dashboard">
+    <!-- Main shopping screen shown after a customer logs in. -->
     <div class="app-shell">
+      <!-- The title is personalized by JavaScript after the session is loaded. -->
       <header class="topbar">
         <h1 id="pageTitle">Welcome</h1>
         <div id="dashboardHeaderActions" class="header-actions"></div>
       </header>
 
+      <!-- Inventory is rendered on the left and the live cart summary on the right. -->
       <main class="content-panel dashboard-layout">
         <div class="inventory-panel">
           <h2 id="userWelcome">Dashboard</h2>
+          <!-- Navigation, profile controls, search, and category filtering are injected here. -->
           <div id="dashboardActions" class="dashboard-actions"></div>
+          <!-- Product cards are generated from the current inventory array. -->
           <div id="inventoryContainer" class="inventory-container"></div> 
         </div>
 
+        <!-- JavaScript keeps this sidebar synchronized with localStorage cart data. -->
         <aside id="cartSidebar" class="cart-sidebar"></aside>
       </main>
     </div>
 
+    <!-- One shared script powers every page in the application. -->
     <script src="script.js"></script>
   </body>
 </html>

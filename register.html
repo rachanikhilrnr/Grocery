@@ -1,16 +1,19 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
+    <!-- Page metadata and the shared application stylesheet. -->
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Grocery Management System - Registration</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body data-page="register">
+    <!-- Registration screen for creating a customer account. -->
     <div class="auth-container">
       <h1>Grocery Management System</h1>
       <h2>Registration</h2>
 
+      <!-- JavaScript validates these fields and stores the new account locally. -->
       <form id="registerForm" novalidate>
         <div class="field-group">
           <label for="firstName">First Name</label>
@@ -40,12 +43,14 @@
         <button type="submit" class="primary-btn">Register</button>
       </form>
 
+      <!-- Link back to the existing-account login screen. -->
       <p class="switch-link">
         Already registered?
         <a href="index.html">Login here</a>
       </p>
     </div>
 
+    <!-- The shared script attaches the registration submit handler. -->
     <script src="script.js"></script>
   </body>
 </html>

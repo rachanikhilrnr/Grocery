@@ -1,9 +1,12 @@
+// Local storage keys keep the browser-only application data separated by purpose.
 const STORAGE_KEY = 'grocery_users';
 const SESSION_KEY = 'grocery_logged_in_user';
 const CART_KEY = 'grocery_cart';
 const INVENTORY_KEY = 'grocery_inventory';
+const ORDERS_KEY = 'grocery_orders';
 const ADMIN_EMAIL = 'admin@gmail.com';
 const ADMIN_PASSWORD = 'grocery@team3?';
+// Categories are displayed in this business-friendly order instead of alphabetically.
 const CATEGORY_ORDER = [
   'Fruits & Vegetables',
   'Rice & Staples',
@@ -15,6 +18,7 @@ const CATEGORY_ORDER = [
   'Chocolates',
 ];
 
+// Starter products used when no inventory has been saved in this browser yet.
 const DEFAULT_INVENTORY = [
   { id: 'dairy-milk-silk', name: 'Dairy Milk Silk', category: 'Chocolates', quantity: '50 g', price: 120, stock: 25, emoji: '🍫' },
   { id: 'kitkat', name: 'KitKat', category: 'Chocolates', quantity: '36 g', price: 55, stock: 30, emoji: '🍫' },
@@ -42,48 +46,70 @@ const DEFAULT_INVENTORY = [
   { id: 'toilet-cleaner', name: 'Toilet Cleaner', category: 'Household Essentials', quantity: '500 ml', price: 140, stock: 10, emoji: '🧽' },
 ];
 
+// Load saved inventory or clone the starter list so it can be modified safely.
 const loadInventory = () => {
   const inventory = JSON.parse(localStorage.getItem(INVENTORY_KEY) || 'null');
   return Array.isArray(inventory) ? inventory : DEFAULT_INVENTORY.map((item) => ({ ...item }));
 };
 
+// This in-memory array is the source used by product cards, cart totals, and admin tools.
 let INVENTORY = loadInventory();
 
+// Persist the current inventory after an admin edit or completed purchase.
 const saveInventory = () => {
   localStorage.setItem(INVENTORY_KEY, JSON.stringify(INVENTORY));
 };
 
+// Read customer accounts from browser storage and guard against malformed data.
 const getUsers = () => {
   const users = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
   return Array.isArray(users) ? users : [];
 };
 
+// Save the complete customer account list.
 const saveUsers = (users) => {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(users));
 };
 
+// Return the session user that controls access to protected pages.
 const getCurrentUser = () => {
   const user = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
   return user || null;
 };
 
+// Start or refresh the current browser session.
 const setCurrentUser = (user) => {
   localStorage.setItem(SESSION_KEY, JSON.stringify(user));
 };
 
+// End the current browser session.
 const clearCurrentUser = () => {
   localStorage.removeItem(SESSION_KEY);
 };
 
+// Read the cart, which stores product IDs and quantities rather than copied prices.
 const getCart = () => {
   const cart = JSON.parse(localStorage.getItem(CART_KEY) || '[]');
   return Array.isArray(cart) ? cart : [];
 };
 
+// Persist cart changes so the dashboard and cart page share the same contents.
 const saveCart = (cart) => {
   localStorage.setItem(CART_KEY, JSON.stringify(cart));
 };
 
+// Read completed invoices used by the customer's order-history view.
+const getOrders = () => {
+  const orders = JSON.parse(localStorage.getItem(ORDERS_KEY) || '[]');
+  return Array.isArray(orders) ? orders : [];
+};
+
+// Persist completed orders in the browser.
+const saveOrders = (orders) => {
+  localStorage.setItem(ORDERS_KEY, JSON.stringify(orders));
+};
+
+// Escape dynamic values before inserting them into generated HTML strings.
 const escapeHtml = (value) => {
   return String(value)
     .replace(/&/g, '&amp;')
@@ -93,10 +119,12 @@ const escapeHtml = (value) => {
     .replace(/'/g, '&#039;');
 };
 
+// Keep user notifications consistent across all page handlers.
 const showAlert = (message) => {
   alert(message);
 };
 
+// Enforce the password policy used during registration and profile changes.
 const validatePassword = (password) => {
   const hasUppercase = /[A-Z]/.test(password);
   const hasLowercase = /[a-z]/.test(password);
@@ -105,8 +133,10 @@ const validatePassword = (password) => {
   return password.length >= 16 && hasUppercase && hasLowercase && hasNumber && hasSpecial;
 };
 
+// Email comparisons are case-insensitive and ignore accidental surrounding spaces.
 const normalizeEmail = (email) => (email || '').trim().toLowerCase();
 
+// Add a requested quantity while preventing nonexistent products and overselling.
 const addToCart = (itemId, quantity = 1) => {
   const item = INVENTORY.find((inventoryItem) => inventoryItem.id === itemId);
 
@@ -142,6 +172,7 @@ const addToCart = (itemId, quantity = 1) => {
   showAlert(`${item.name} added to cart.`);
 };
 
+// Calculate the merchandise total from current inventory prices.
 const getCartTotal = () => {
   return getCart().reduce((total, cartItem) => {
     const item = INVENTORY.find((inventoryItem) => inventoryItem.id === cartItem.id);
@@ -149,9 +180,40 @@ const getCartTotal = () => {
   }, 0);
 };
 
+// Use separate display formats because the browser and generated PDF use different fonts.
 const formatCurrency = (amount) => `₹${Number(amount).toFixed(2)}`;
 const formatPdfCurrency = (amount) => `Rs. ${Number(amount).toFixed(2)}`;
 
+// Show only orders belonging to the signed-in customer.
+const renderOrderHistory = (currentUser) => {
+  const orderHistory = document.getElementById('orderHistory');
+
+  if (!orderHistory || !currentUser) {
+    return;
+  }
+
+  const orders = getOrders().filter((order) => normalizeEmail(order.emailid) === normalizeEmail(currentUser.emailid));
+
+  orderHistory.innerHTML = orders.length
+    ? orders
+        .slice()
+        .reverse()
+        .map(
+          (order) => `
+            <article class="order-row">
+              <div>
+                <strong>${escapeHtml(order.invoiceNo)}</strong>
+                <span>${escapeHtml(order.date)} • ${escapeHtml(order.paymentMethod)}</span>
+              </div>
+              <strong>${formatCurrency(order.total)}</strong>
+            </article>
+          `
+        )
+        .join('')
+    : '<p class="inactive-message">No completed orders yet.</p>';
+};
+
+// Render the compact cart summary shown beside the inventory.
 const renderDashboardCart = (currentUser) => {
   const cartSidebar = document.getElementById('cartSidebar');
 
@@ -237,6 +299,7 @@ const renderDashboardCart = (currentUser) => {
   });
 };
 
+// Build the customer dashboard, including account controls, filters, products, and cart.
 const renderDashboard = () => {
   const currentUser = getCurrentUser();
 
@@ -296,15 +359,38 @@ const renderDashboard = () => {
       <button class="secondary-btn" id="toggleActiveBtn">Set profile inactive</button>
       <button class="warning-btn" id="logoutBtn">Exit</button>
     </div>
+    <div class="inventory-filters">
+      <label for="inventorySearch">Search products</label>
+      <input type="search" id="inventorySearch" placeholder="Search by product name" />
+      <label for="categoryFilter">Category</label>
+      <select id="categoryFilter"><option value="all">All categories</option></select>
+    </div>
   `;
 
   const categories = [...new Set(INVENTORY.map((item) => item.category))].sort(
     (firstCategory, secondCategory) => CATEGORY_ORDER.indexOf(firstCategory) - CATEGORY_ORDER.indexOf(secondCategory)
   );
 
-  inventoryContainer.innerHTML = categories
+  const categoryFilter = document.getElementById('categoryFilter');
+  categoryFilter.innerHTML += categories.map((category) => `<option value="${escapeHtml(category)}">${escapeHtml(category)}</option>`).join('');
+
+  // Rebuild product cards whenever the search term or category changes.
+  const renderInventory = () => {
+    const searchTerm = document.getElementById('inventorySearch')?.value.trim().toLowerCase() || '';
+    const selectedCategory = categoryFilter?.value || 'all';
+
+    inventoryContainer.innerHTML = categories
     .map((category) => {
-      const items = INVENTORY.filter((item) => item.category === category);
+      const items = INVENTORY.filter(
+        (item) =>
+          item.category === category &&
+          (selectedCategory === 'all' || item.category === selectedCategory) &&
+          (!searchTerm || item.name.toLowerCase().includes(searchTerm))
+      );
+
+      if (!items.length) {
+        return '';
+      }
 
       return `
         <section class="category-section">
@@ -340,7 +426,23 @@ const renderDashboard = () => {
         </section>
       `;
     })
-    .join('');
+    .join('') || '<p class="inactive-message">No products match your search.</p>';
+
+    document.querySelectorAll('.add-cart-btn').forEach((button) => {
+      button.addEventListener('click', () => {
+        const itemId = button.dataset.itemId;
+        const quantityInput = document.querySelector(`[data-quantity-for="${itemId}"]`);
+        const quantity = Number(quantityInput?.value || 1);
+
+        addToCart(itemId, quantity);
+        renderDashboard();
+      });
+    });
+  };
+
+  document.getElementById('inventorySearch')?.addEventListener('input', renderInventory);
+  categoryFilter?.addEventListener('change', renderInventory);
+  renderInventory();
 
   document.getElementById('toggleActiveBtn')?.addEventListener('click', () => {
     const users = getUsers();
@@ -360,20 +462,10 @@ const renderDashboard = () => {
     window.location.href = 'index.html';
   });
 
-  document.querySelectorAll('.add-cart-btn').forEach((button) => {
-    button.addEventListener('click', () => {
-      const itemId = button.dataset.itemId;
-      const quantityInput = document.querySelector(`[data-quantity-for="${itemId}"]`);
-      const quantity = Number(quantityInput?.value || 1);
-
-      addToCart(itemId, quantity);
-      renderDashboard();
-    });
-  });
-
   renderDashboardCart(currentUser);
 };
 
+// Authenticate either the fixed admin account or a locally registered customer.
 const handleLoginSubmit = (event) => {
   event.preventDefault();
 
@@ -403,6 +495,7 @@ const handleLoginSubmit = (event) => {
   window.location.href = 'dashboard.html';
 };
 
+// Validate and save a new customer account, then return to login.
 const handleRegisterSubmit = (event) => {
   event.preventDefault();
 
@@ -460,6 +553,7 @@ const handleRegisterSubmit = (event) => {
   window.location.href = 'index.html';
 };
 
+// Toggle profile fields and buttons between read-only and edit modes.
 const setProfileEditingState = (isEditing) => {
   const fields = [
     'profileFirstName',
@@ -489,6 +583,7 @@ const setProfileEditingState = (isEditing) => {
   }
 };
 
+// Fill the profile form from the current session before the page is displayed.
 const populateProfileForm = () => {
   const currentUser = getCurrentUser();
 
@@ -512,6 +607,7 @@ const populateProfileForm = () => {
   setProfileEditingState(false);
 };
 
+// Validate profile changes and update both the account list and active session.
 const handleProfileSubmit = (event) => {
   event.preventDefault();
 
@@ -587,11 +683,18 @@ const handleProfileSubmit = (event) => {
   window.location.href = 'dashboard.html';
 };
 
+// Render cart quantities, totals, payment choices, and checkout fields.
 const renderCartPage = () => {
   const currentUser = getCurrentUser();
 
   if (!currentUser) {
     window.location.href = 'index.html';
+    return;
+  }
+
+  if (currentUser.useractive === false) {
+    showAlert('Activate your profile before opening the cart.');
+    window.location.href = 'dashboard.html';
     return;
   }
 
@@ -748,6 +851,7 @@ const renderCartPage = () => {
     </form>
   `;
 
+  // Quantity buttons update localStorage and then redraw the totals.
   document.querySelectorAll('.qty-btn').forEach((button) => {
     button.addEventListener('click', () => {
       const itemId = button.dataset.itemId;
@@ -781,6 +885,7 @@ const renderCartPage = () => {
     });
   });
 
+  // Show only the input group belonging to the selected payment method.
   document.querySelectorAll('input[name="paymentMethod"]').forEach((radio) => {
     radio.addEventListener('change', () => {
       document.querySelectorAll('.payment-method-section').forEach((section) => {
@@ -792,6 +897,7 @@ const renderCartPage = () => {
   document.getElementById('checkoutForm')?.addEventListener('submit', handleCheckoutSubmit);
 };
 
+// Validate payment details, create an invoice, reduce stock, and save the order.
 const handleCheckoutSubmit = (event) => {
   event.preventDefault();
 
@@ -845,7 +951,7 @@ const handleCheckoutSubmit = (event) => {
       ? document.getElementById('cvv')
       : document.getElementById('debitCvv'))?.value.trim();
 
-    if (!cardHolder || cardNumber.length < 12 || !expiryDate || !cvv) {
+    if (!cardHolder || !/^\d{12,19}$/.test(cardNumber || '') || !/^(0[1-9]|1[0-2])\/\d{2}$/.test(expiryDate) || !/^\d{3,4}$/.test(cvv || '')) {
       valid = false;
       showAlert('Please fill in all card details correctly.');
     }
@@ -865,6 +971,13 @@ const handleCheckoutSubmit = (event) => {
     return;
   }
 
+  const unavailableItem = items.find((item) => item.quantity > item.stock);
+  if (unavailableItem) {
+    showAlert(`Only ${unavailableItem.stock} units of ${unavailableItem.name} are available.`);
+    renderCartPage();
+    return;
+  }
+
   const invoice = {
     invoiceNo: `INV-${Date.now()}`,
     transactionId: `TXN-${Date.now()}`,
@@ -878,16 +991,26 @@ const handleCheckoutSubmit = (event) => {
     total,
   };
 
-  generateInvoicePdf(invoice);
+  INVENTORY = INVENTORY.map((inventoryItem) => {
+    const purchasedItem = items.find((item) => item.id === inventoryItem.id);
+    return purchasedItem ? { ...inventoryItem, stock: inventoryItem.stock - purchasedItem.quantity } : inventoryItem;
+  });
+  saveInventory();
+
+  const orders = getOrders();
+  orders.push(invoice);
+  saveOrders(orders);
+
+  const pdfGenerated = generateInvoicePdf(invoice);
   saveCart([]);
-  showAlert('Payment successful. Invoice downloaded as PDF.');
+  showAlert(pdfGenerated ? 'Payment successful. Invoice downloaded as PDF.' : 'Payment successful. Your order was saved, but the invoice PDF could not be generated.');
   window.location.href = 'dashboard.html';
 };
 
+// Generate a downloadable invoice when the external jsPDF library is available.
 const generateInvoicePdf = (invoice) => {
   if (!window.jspdf || !window.jspdf.jsPDF) {
-    showAlert('PDF generation is unavailable in this browser.');
-    return;
+    return false;
   }
 
   const { jsPDF } = window.jspdf;
@@ -928,8 +1051,10 @@ const generateInvoicePdf = (invoice) => {
   doc.text(`Total Amount: ${formatPdfCurrency(invoice.total)}`, 14, y);
 
   doc.save(`${invoice.invoiceNo}.pdf`);
+  return true;
 };
 
+// Build the admin console and attach user and inventory management actions.
 const renderAdminPage = () => {
   const currentUser = getCurrentUser();
 
@@ -947,6 +1072,7 @@ const renderAdminPage = () => {
     return;
   }
 
+  // Render customers and let the admin activate or deactivate each account.
   const renderUsers = () => {
     const users = getUsers();
     usersContainer.innerHTML = users.length
@@ -982,6 +1108,7 @@ const renderAdminPage = () => {
     });
   };
 
+  // Render editable product controls grouped by category.
   const renderInventory = () => {
     const categories = [...new Set([...INVENTORY.map((item) => item.category), ...Array.from(categorySelect.options).map((option) => option.value)])].sort(
       (firstCategory, secondCategory) => CATEGORY_ORDER.indexOf(firstCategory) - CATEGORY_ORDER.indexOf(secondCategory)
@@ -999,8 +1126,13 @@ const renderAdminPage = () => {
               <div class="admin-row inventory-admin-row">
                 <div class="admin-product-info"><span class="item-emoji">${item.emoji}</span><div><strong>${escapeHtml(item.name)}</strong><span>${escapeHtml(item.quantity)} • ${formatCurrency(item.price)}</span></div></div>
                 <div class="admin-product-controls">
+                  <label>Name <input type="text" class="admin-name-input" data-item-id="${item.id}" value="${escapeHtml(item.name)}" /></label>
+                  <label>Category <input type="text" class="admin-category-input" data-item-id="${item.id}" value="${escapeHtml(item.category)}" /></label>
+                  <label>Quantity <input type="text" class="admin-quantity-input" data-item-id="${item.id}" value="${escapeHtml(item.quantity)}" /></label>
+                  <label>Price <input type="number" min="0" step="0.01" class="admin-price-input" data-item-id="${item.id}" value="${item.price}" /></label>
                   <label>Stock <input type="number" min="0" class="admin-stock-input" data-item-id="${item.id}" value="${item.stock}" /></label>
-                  <button class="primary-btn admin-save-stock" data-item-id="${item.id}">Save</button>
+                  <label>Icon <input type="text" maxlength="4" class="admin-emoji-input" data-item-id="${item.id}" value="${escapeHtml(item.emoji)}" /></label>
+                  <button class="primary-btn admin-save-product" data-item-id="${item.id}">Save</button>
                   <button class="warning-btn admin-delete-item" data-item-id="${item.id}">Delete</button>
                 </div>
               </div>
@@ -1010,16 +1142,31 @@ const renderAdminPage = () => {
       })
       .join('');
 
-    document.querySelectorAll('.admin-save-stock').forEach((button) => {
+    document.querySelectorAll('.admin-save-product').forEach((button) => {
       button.addEventListener('click', () => {
         const item = INVENTORY.find((entry) => entry.id === button.dataset.itemId);
-        const input = document.querySelector(`[data-item-id="${button.dataset.itemId}"].admin-stock-input`);
+        const itemId = button.dataset.itemId;
+        const nameInput = document.querySelector(`[data-item-id="${itemId}"].admin-name-input`);
+        const categoryInput = document.querySelector(`[data-item-id="${itemId}"].admin-category-input`);
+        const quantityInput = document.querySelector(`[data-item-id="${itemId}"].admin-quantity-input`);
+        const priceInput = document.querySelector(`[data-item-id="${itemId}"].admin-price-input`);
+        const stockInput = document.querySelector(`[data-item-id="${itemId}"].admin-stock-input`);
+        const emojiInput = document.querySelector(`[data-item-id="${itemId}"].admin-emoji-input`);
+        const price = Number(priceInput?.value);
+        const stock = Number(stockInput?.value);
 
-        if (item && input && Number.isInteger(Number(input.value)) && Number(input.value) >= 0) {
-          item.stock = Number(input.value);
+        if (item && nameInput?.value.trim() && categoryInput?.value.trim() && quantityInput?.value.trim() && price >= 0 && Number.isInteger(stock) && stock >= 0) {
+          item.name = nameInput.value.trim();
+          item.category = categoryInput.value.trim();
+          item.quantity = quantityInput.value.trim();
+          item.price = price;
+          item.stock = stock;
+          item.emoji = emojiInput?.value.trim() || '🛒';
           saveInventory();
-          showAlert(`${item.name} stock updated.`);
+          showAlert(`${item.name} updated.`);
           renderInventory();
+        } else {
+          showAlert('Enter valid product details, price, and whole-number stock.');
         }
       });
     });
@@ -1036,6 +1183,7 @@ const renderAdminPage = () => {
     });
   };
 
+  // Add a new product after validating its required fields and numeric values.
   document.getElementById('addProductForm')?.addEventListener('submit', (event) => {
     event.preventDefault();
     const form = event.currentTarget;
@@ -1068,6 +1216,7 @@ const renderAdminPage = () => {
   renderInventory();
 };
 
+// Attach only the handlers needed by the page identified in body[data-page].
 const initializePage = () => {
   const page = document.body.dataset.page;
 
@@ -1098,6 +1247,7 @@ const initializePage = () => {
 
   if (page === 'profile') {
     populateProfileForm();
+    renderOrderHistory(getCurrentUser());
     document.getElementById('enableEditBtn')?.addEventListener('click', () => {
       setProfileEditingState(true);
     });

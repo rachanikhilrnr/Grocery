@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
+    <!-- Cart metadata, shared styles, and the client-side PDF library for invoices. -->
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Grocery Management System - Cart</title>
@@ -8,7 +9,9 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.1.1/jspdf.umd.min.js"></script>
   </head>
   <body data-page="cart">
+    <!-- Cart review and checkout page for the active customer. -->
     <div class="app-shell">
+      <!-- Shopping navigation and logout controls. -->
       <header class="topbar">
         <div>
           <h1>My Cart</h1>
@@ -20,12 +23,14 @@
         </div>
       </header>
 
+      <!-- JavaScript fills the item list and checkout summary dynamically. -->
       <main class="content-panel cart-layout">
         <div id="cartItems" class="cart-items"></div>
         <aside id="cartSummary" class="summary-box"></aside>
       </main>
     </div>
 
+    <!-- The shared script manages quantities, payment selection, and checkout. -->
     <script src="script.js"></script>
   </body>
 </html>

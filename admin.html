@@ -1,29 +1,36 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
+    <!-- Admin page metadata and shared application styles. -->
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Grocery Management System - Admin</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body data-page="admin">
+    <!-- Administrator-only user and inventory management screen. -->
     <div class="app-shell">
+      <!-- Admin session header and logout control. -->
       <header class="topbar">
         <div><h1>Admin Console</h1><p class="inactive-message">Manage users and inventory</p></div>
         <button id="adminLogoutBtn" class="warning-btn">Exit</button>
       </header>
 
+      <!-- Each section is populated or managed by renderAdminPage in script.js. -->
       <main class="content-panel admin-layout">
+        <!-- Registered customer accounts and activation controls. -->
         <section>
           <h2>Users</h2>
           <div id="adminUsers" class="admin-list"></div>
         </section>
 
+        <!-- Existing products with editable details, stock, and delete actions. -->
         <section>
           <div class="admin-section-heading"><h2>Inventory</h2><span class="inactive-message">Stock changes apply to shoppers immediately.</span></div>
           <div id="adminInventory" class="admin-inventory"></div>
         </section>
 
+        <!-- Form for adding a new product to the shared inventory. -->
         <section class="add-product-panel">
           <h2>Add Product</h2>
           <form id="addProductForm" class="admin-product-form">
@@ -38,6 +45,7 @@
         </section>
       </main>
     </div>
+    <!-- The shared script verifies the admin session and attaches all controls. -->
     <script src="script.js"></script>
   </body>
 </html>
