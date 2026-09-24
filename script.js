@@ -448,7 +448,7 @@ const renderDashboard = () => {
     return;
   }
 
-  pageTitle.textContent = `Welcome, ${escapeHtml(currentUser.firstname)}`;
+  pageTitle.textContent = 'Dashboard';
   userWelcome.textContent = `Welcome, ${escapeHtml(currentUser.firstname)} ${escapeHtml(currentUser.lastname)}`;
 
   if (currentUser.useractive === false) {
