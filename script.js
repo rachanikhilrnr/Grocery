@@ -133,6 +133,100 @@ const validatePassword = (password) => {
   return password.length >= 16 && hasUppercase && hasLowercase && hasNumber && hasSpecial;
 };
 
+// Allow letters separated by spaces while rejecting digits and punctuation.
+const validateName = (name) => /^[A-Za-z]+(?: [A-Za-z]+)*$/.test(name);
+
+// Give immediate feedback and remove unsupported name characters as they are entered.
+const handleNameInput = (event) => {
+  const input = event.target;
+  const error = document.getElementById(`${input.id}Error`);
+  const hasUnsupportedCharacters = /[^A-Za-z ]/.test(input.value);
+
+  input.value = input.value.replace(/[^A-Za-z ]/g, '');
+  input.setCustomValidity('');
+
+  if (error) {
+    error.textContent = hasUnsupportedCharacters ? 'Use letters and spaces only.' : '';
+  }
+};
+
+// Show immediate feedback when a non-empty email does not have a valid format.
+const handleEmailInput = (event) => {
+  const input = event.target;
+  const error = document.getElementById('emailError');
+  const email = input.value.trim();
+  const isInvalidEmail = email.length > 0 && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
+  input.setCustomValidity('');
+
+  if (error) {
+    error.textContent = isInvalidEmail ? 'Enter a valid email address, such as name@example.com.' : '';
+  }
+};
+
+const setFieldError = (inputId, message) => {
+  const error = document.getElementById(`${inputId}Error`);
+  if (error) {
+    error.textContent = message;
+  }
+};
+
+// Keep payment names consistent with registration names while typing.
+const handlePaymentNameInput = (event) => {
+  handleNameInput(event);
+};
+
+// Accept exactly 16 digits for both credit and debit card numbers.
+const handleCardNumberInput = (event) => {
+  const input = event.target;
+  const hadUnsupportedCharacters = /[^\d\s]/.test(input.value);
+  input.value = input.value.replace(/\D/g, '').slice(0, 16);
+
+  setFieldError(
+    input.id,
+    hadUnsupportedCharacters || (input.value && input.value.length !== 16) ? 'Card number must contain exactly 16 digits.' : ''
+  );
+};
+
+// Format expiry as MM/YY and reject months before the current month.
+const handleExpiryInput = (event) => {
+  const input = event.target;
+  const hadUnsupportedCharacters = /[^\d/\s]/.test(input.value);
+  const digits = input.value.replace(/\D/g, '').slice(0, 4);
+  input.value = digits.length > 2 ? `${digits.slice(0, 2)}/${digits.slice(2)}` : digits;
+
+  let message = '';
+  if (hadUnsupportedCharacters || (input.value && !/^\d{2}\/\d{2}$/.test(input.value))) {
+    message = 'Enter expiry in MM/YY format.';
+  } else if (input.value) {
+    const [month, year] = input.value.split('/').map(Number);
+    const now = new Date();
+    const currentMonth = now.getFullYear() * 12 + now.getMonth();
+    const expiryMonth = (2000 + year) * 12 + month - 1;
+    if (month < 1 || month > 12 || expiryMonth < currentMonth) {
+      message = 'Expiry date cannot be in the past.';
+    }
+  }
+
+  setFieldError(input.id, message);
+};
+
+// Accept exactly 3 digits for card CVV values.
+const handleCvvInput = (event) => {
+  const input = event.target;
+  const hadUnsupportedCharacters = /[^\d]/.test(input.value);
+  input.value = input.value.replace(/\D/g, '').slice(0, 3);
+  setFieldError(input.id, hadUnsupportedCharacters || (input.value && input.value.length !== 3) ? 'CVV must contain exactly 3 digits.' : '');
+};
+
+// Validate common UPI IDs such as nikhil@paytm or nikhil@gpay.
+const handleUpiInput = (event) => {
+  const input = event.target;
+  const value = input.value.trim();
+  const isInvalid = value.length > 0 && !/^[A-Za-z0-9][A-Za-z0-9._-]*@[A-Za-z0-9][A-Za-z0-9.-]*$/.test(value);
+  setFieldError(input.id, isInvalid ? 'Enter a valid UPI ID, such as nikhil@paytm.' : '');
+};
+
 // Email comparisons are case-insensitive and ignore accidental surrounding spaces.
 const normalizeEmail = (email) => (email || '').trim().toLowerCase();
 
@@ -183,6 +277,7 @@ const getCartTotal = () => {
 // Use separate display formats because the browser and generated PDF use different fonts.
 const formatCurrency = (amount) => `₹${Number(amount).toFixed(2)}`;
 const formatPdfCurrency = (amount) => `Rs. ${Number(amount).toFixed(2)}`;
+const calculateGst = (amount) => amount * 0.07;
 
 // Show only orders belonging to the signed-in customer.
 const renderOrderHistory = (currentUser) => {
@@ -260,7 +355,8 @@ const renderDashboardCart = (currentUser) => {
 
   const subtotal = itemsWithDetails.reduce((total, item) => total + item.total, 0);
   const deliveryFee = subtotal > 0 ? 35 : 0;
-  const total = subtotal + deliveryFee;
+  const gst = calculateGst(subtotal);
+  const total = subtotal + deliveryFee + gst;
 
   cartSidebar.innerHTML = `
     <h3>Cart</h3>
@@ -273,8 +369,15 @@ const renderDashboardCart = (currentUser) => {
                 <h4>${escapeHtml(item.name)}</h4>
                 <button class="warning-btn remove-item-btn" data-item-id="${item.id}">Remove</button>
               </div>
-              <p>${escapeHtml(item.quantity)} • ${formatCurrency(item.price)} each</p>
-              <strong>${formatCurrency(item.total)}</strong>
+              <p>${formatCurrency(item.price)} each</p>
+              <div class="cart-sidebar-item-footer">
+                <div class="qty-controls">
+                  <button class="qty-btn" data-action="decrease" data-item-id="${item.id}">-</button>
+                  <span class="qty-value">${item.quantity}</span>
+                  <button class="qty-btn" data-action="increase" data-item-id="${item.id}">+</button>
+                </div>
+                <strong>${formatCurrency(item.total)}</strong>
+              </div>
             </div>
           `
         )
@@ -284,6 +387,7 @@ const renderDashboardCart = (currentUser) => {
     <div class="cart-sidebar-total">
       <div class="total-line"><span>Subtotal</span><strong>${formatCurrency(subtotal)}</strong></div>
       <div class="total-line"><span>Delivery Fee</span><strong>${formatCurrency(deliveryFee)}</strong></div>
+      <div class="total-line"><span>GST (7%)</span><strong>${formatCurrency(gst)}</strong></div>
       <div class="total-line total-amount"><span>Total</span><strong>${formatCurrency(total)}</strong></div>
       <a href="cart.html" class="checkout-btn" style="width: 100%; margin-top: 1rem;">Checkout</a>
     </div>
@@ -294,6 +398,33 @@ const renderDashboardCart = (currentUser) => {
       const itemId = button.dataset.itemId;
       const updatedCart = getCart().filter((cartItem) => cartItem.id !== itemId);
       saveCart(updatedCart);
+      renderDashboard();
+    });
+  });
+
+  document.querySelectorAll('.cart-sidebar .qty-btn').forEach((button) => {
+    button.addEventListener('click', () => {
+      const itemId = button.dataset.itemId;
+      const action = button.dataset.action;
+      const updatedCart = getCart();
+      const foundItem = updatedCart.find((cartItem) => cartItem.id === itemId);
+
+      if (!foundItem) {
+        return;
+      }
+
+      if (action === 'increase') {
+        const inventoryItem = INVENTORY.find((item) => item.id === itemId);
+        if (inventoryItem && foundItem.quantity >= inventoryItem.stock) {
+          showAlert(`Only ${inventoryItem.stock} units of ${inventoryItem.name} available.`);
+          return;
+        }
+        foundItem.quantity += 1;
+      } else {
+        foundItem.quantity -= 1;
+      }
+
+      saveCart(updatedCart.filter((cartItem) => cartItem.quantity > 0));
       renderDashboard();
     });
   });
@@ -507,6 +638,11 @@ const handleRegisterSubmit = (event) => {
 
   if (!firstname || !lastname || !emailid || !password || !confirmPassword) {
     showAlert('Please fill in all fields.');
+    return;
+  }
+
+  if (!validateName(firstname) || !validateName(lastname)) {
+    showAlert('First name and last name may contain letters and spaces only.');
     return;
   }
 
@@ -742,7 +878,8 @@ const renderCartPage = () => {
 
   const subtotal = itemsWithDetails.reduce((total, item) => total + item.total, 0);
   const deliveryFee = subtotal > 0 ? 35 : 0;
-  const total = subtotal + deliveryFee;
+  const gst = calculateGst(subtotal);
+  const total = subtotal + deliveryFee + gst;
 
   cartItemsContainer.innerHTML = itemsWithDetails
     .map(
@@ -769,6 +906,7 @@ const renderCartPage = () => {
     <h3>Checkout</h3>
     <div class="total-line"><span>Subtotal</span><strong>${formatCurrency(subtotal)}</strong></div>
     <div class="total-line"><span>Delivery Fee</span><strong>${formatCurrency(deliveryFee)}</strong></div>
+    <div class="total-line"><span>GST (7%)</span><strong>${formatCurrency(gst)}</strong></div>
     <div class="total-line total-amount"><span>Total</span><strong>${formatCurrency(total)}</strong></div>
 
     <div class="payment-options">
@@ -795,6 +933,7 @@ const renderCartPage = () => {
         <div class="field-group">
           <label for="upiId">UPI ID</label>
           <input type="text" id="upiId" name="upiId" placeholder="name@upi" />
+          <small class="field-error" id="upiIdError" aria-live="polite"></small>
         </div>
       </div>
 
@@ -802,18 +941,22 @@ const renderCartPage = () => {
         <div class="field-group">
           <label for="cardHolderName">Card Holder Name</label>
           <input type="text" id="cardHolderName" name="cardHolderName" placeholder="Enter card holder name" />
+          <small class="field-error" id="cardHolderNameError" aria-live="polite"></small>
         </div>
         <div class="field-group">
           <label for="cardNumber">Card Number</label>
-          <input type="text" id="cardNumber" name="cardNumber" placeholder="1234 5678 9012 3456" />
+          <input type="text" id="cardNumber" name="cardNumber" placeholder="16-digit card number" inputmode="numeric" maxlength="16" />
+          <small class="field-error" id="cardNumberError" aria-live="polite"></small>
         </div>
         <div class="field-group">
           <label for="expiryDate">Expiry Date</label>
-          <input type="text" id="expiryDate" name="expiryDate" placeholder="MM/YY" />
+          <input type="text" id="expiryDate" name="expiryDate" placeholder="MM/YY" inputmode="numeric" maxlength="5" />
+          <small class="field-error" id="expiryDateError" aria-live="polite"></small>
         </div>
         <div class="field-group">
           <label for="cvv">CVV</label>
-          <input type="password" id="cvv" name="cvv" placeholder="CVV" />
+          <input type="password" id="cvv" name="cvv" placeholder="3-digit CVV" inputmode="numeric" maxlength="3" />
+          <small class="field-error" id="cvvError" aria-live="polite"></small>
         </div>
       </div>
 
@@ -821,18 +964,22 @@ const renderCartPage = () => {
         <div class="field-group">
           <label for="debitCardHolderName">Card Holder Name</label>
           <input type="text" id="debitCardHolderName" name="debitCardHolderName" placeholder="Enter card holder name" />
+          <small class="field-error" id="debitCardHolderNameError" aria-live="polite"></small>
         </div>
         <div class="field-group">
           <label for="debitCardNumber">Card Number</label>
-          <input type="text" id="debitCardNumber" name="debitCardNumber" placeholder="1234 5678 9012 3456" />
+          <input type="text" id="debitCardNumber" name="debitCardNumber" placeholder="16-digit card number" inputmode="numeric" maxlength="16" />
+          <small class="field-error" id="debitCardNumberError" aria-live="polite"></small>
         </div>
         <div class="field-group">
           <label for="debitExpiryDate">Expiry Date</label>
-          <input type="text" id="debitExpiryDate" name="debitExpiryDate" placeholder="MM/YY" />
+          <input type="text" id="debitExpiryDate" name="debitExpiryDate" placeholder="MM/YY" inputmode="numeric" maxlength="5" />
+          <small class="field-error" id="debitExpiryDateError" aria-live="polite"></small>
         </div>
         <div class="field-group">
           <label for="debitCvv">CVV</label>
-          <input type="password" id="debitCvv" name="debitCvv" placeholder="CVV" />
+          <input type="password" id="debitCvv" name="debitCvv" placeholder="3-digit CVV" inputmode="numeric" maxlength="3" />
+          <small class="field-error" id="debitCvvError" aria-live="polite"></small>
         </div>
       </div>
 
@@ -840,10 +987,12 @@ const renderCartPage = () => {
         <div class="field-group">
           <label for="bankName">Bank Name</label>
           <input type="text" id="bankName" name="bankName" placeholder="Enter bank name" />
+          <small class="field-error" id="bankNameError" aria-live="polite"></small>
         </div>
         <div class="field-group">
           <label for="accountHolder">Account Holder Name</label>
           <input type="text" id="accountHolder" name="accountHolder" placeholder="Enter account holder name" />
+          <small class="field-error" id="accountHolderError" aria-live="polite"></small>
         </div>
       </div>
 
@@ -885,6 +1034,20 @@ const renderCartPage = () => {
     });
   });
 
+  ['cardHolderName', 'debitCardHolderName', 'bankName', 'accountHolder'].forEach((inputId) => {
+    document.getElementById(inputId)?.addEventListener('input', handlePaymentNameInput);
+  });
+  ['cardNumber', 'debitCardNumber'].forEach((inputId) => {
+    document.getElementById(inputId)?.addEventListener('input', handleCardNumberInput);
+  });
+  ['expiryDate', 'debitExpiryDate'].forEach((inputId) => {
+    document.getElementById(inputId)?.addEventListener('input', handleExpiryInput);
+  });
+  ['cvv', 'debitCvv'].forEach((inputId) => {
+    document.getElementById(inputId)?.addEventListener('input', handleCvvInput);
+  });
+  document.getElementById('upiId')?.addEventListener('input', handleUpiInput);
+
   // Show only the input group belonging to the selected payment method.
   document.querySelectorAll('input[name="paymentMethod"]').forEach((radio) => {
     radio.addEventListener('change', () => {
@@ -925,13 +1088,14 @@ const handleCheckoutSubmit = (event) => {
 
   const subtotal = items.reduce((sum, item) => sum + item.total, 0);
   const deliveryFee = subtotal > 0 ? 35 : 0;
-  const total = subtotal + deliveryFee;
+  const gst = calculateGst(subtotal);
+  const total = subtotal + deliveryFee + gst;
 
   let valid = true;
 
   if (paymentMethod === 'UPI') {
     const upiId = document.getElementById('upiId')?.value.trim();
-    if (!upiId || !upiId.includes('@')) {
+    if (!upiId || !/^[A-Za-z0-9][A-Za-z0-9._-]*@[A-Za-z0-9][A-Za-z0-9.-]*$/.test(upiId)) {
       valid = false;
       showAlert('Please enter a valid UPI ID.');
     }
@@ -951,7 +1115,18 @@ const handleCheckoutSubmit = (event) => {
       ? document.getElementById('cvv')
       : document.getElementById('debitCvv'))?.value.trim();
 
-    if (!cardHolder || !/^\d{12,19}$/.test(cardNumber || '') || !/^(0[1-9]|1[0-2])\/\d{2}$/.test(expiryDate) || !/^\d{3,4}$/.test(cvv || '')) {
+    const [expiryMonth, expiryYear] = (expiryDate || '').split('/').map(Number);
+    const now = new Date();
+    const currentMonth = now.getFullYear() * 12 + now.getMonth();
+    const expiryMonthValue = (2000 + expiryYear) * 12 + expiryMonth - 1;
+
+    if (
+      !validateName(cardHolder || '') ||
+      !/^\d{16}$/.test(cardNumber || '') ||
+      !/^(0[1-9]|1[0-2])\/\d{2}$/.test(expiryDate || '') ||
+      expiryMonthValue < currentMonth ||
+      !/^\d{3}$/.test(cvv || '')
+    ) {
       valid = false;
       showAlert('Please fill in all card details correctly.');
     }
@@ -961,9 +1136,9 @@ const handleCheckoutSubmit = (event) => {
     const bankName = document.getElementById('bankName')?.value.trim();
     const accountHolder = document.getElementById('accountHolder')?.value.trim();
 
-    if (!bankName || !accountHolder) {
+    if (!validateName(bankName || '') || !validateName(accountHolder || '')) {
       valid = false;
-      showAlert('Please enter your bank name and account holder name.');
+      showAlert('Please enter your bank name and account holder name using letters and spaces only.');
     }
   }
 
@@ -988,6 +1163,7 @@ const handleCheckoutSubmit = (event) => {
     items,
     subtotal,
     deliveryFee,
+    gst,
     total,
   };
 
@@ -1047,6 +1223,8 @@ const generateInvoicePdf = (invoice) => {
   doc.text(`Subtotal: ${formatPdfCurrency(invoice.subtotal)}`, 14, y);
   y += 8;
   doc.text(`Delivery Fee: ${formatPdfCurrency(invoice.deliveryFee)}`, 14, y);
+  y += 8;
+  doc.text(`GST (7%): ${formatPdfCurrency(invoice.gst)}`, 14, y);
   y += 8;
   doc.text(`Total Amount: ${formatPdfCurrency(invoice.total)}`, 14, y);
 
@@ -1127,7 +1305,9 @@ const renderAdminPage = () => {
                 <div class="admin-product-info"><span class="item-emoji">${item.emoji}</span><div><strong>${escapeHtml(item.name)}</strong><span>${escapeHtml(item.quantity)} • ${formatCurrency(item.price)}</span></div></div>
                 <div class="admin-product-controls">
                   <label>Name <input type="text" class="admin-name-input" data-item-id="${item.id}" value="${escapeHtml(item.name)}" /></label>
-                  <label>Category <input type="text" class="admin-category-input" data-item-id="${item.id}" value="${escapeHtml(item.category)}" /></label>
+                  <label>Category <select class="admin-category-input" data-item-id="${item.id}">${categories
+                    .map((availableCategory) => `<option value="${escapeHtml(availableCategory)}" ${availableCategory === item.category ? 'selected' : ''}>${escapeHtml(availableCategory)}</option>`)
+                    .join('')}</select></label>
                   <label>Quantity <input type="text" class="admin-quantity-input" data-item-id="${item.id}" value="${escapeHtml(item.quantity)}" /></label>
                   <label>Price <input type="number" min="0" step="0.01" class="admin-price-input" data-item-id="${item.id}" value="${item.price}" /></label>
                   <label>Stock <input type="number" min="0" class="admin-stock-input" data-item-id="${item.id}" value="${item.stock}" /></label>
@@ -1155,9 +1335,9 @@ const renderAdminPage = () => {
         const price = Number(priceInput?.value);
         const stock = Number(stockInput?.value);
 
-        if (item && nameInput?.value.trim() && categoryInput?.value.trim() && quantityInput?.value.trim() && price >= 0 && Number.isInteger(stock) && stock >= 0) {
+        if (item && nameInput?.value.trim() && categoryInput?.value && quantityInput?.value.trim() && price >= 0 && Number.isInteger(stock) && stock >= 0) {
           item.name = nameInput.value.trim();
-          item.category = categoryInput.value.trim();
+          item.category = categoryInput.value;
           item.quantity = quantityInput.value.trim();
           item.price = price;
           item.stock = stock;
@@ -1239,6 +1419,9 @@ const initializePage = () => {
 
   if (page === 'register') {
     document.getElementById('registerForm')?.addEventListener('submit', handleRegisterSubmit);
+    document.getElementById('firstName')?.addEventListener('input', handleNameInput);
+    document.getElementById('lastName')?.addEventListener('input', handleNameInput);
+    document.getElementById('email')?.addEventListener('input', handleEmailInput);
   }
 
   if (page === 'dashboard') {
